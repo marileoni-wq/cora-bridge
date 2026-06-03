@@ -78,12 +78,12 @@ function injectToOpenClaw(fromPhone, text) {
           step = 'injecting'
 
           // Format message so Cora understands the context
-          const agentMessage = `📱 Mensagem recebida via WhatsApp de +${fromPhone}:\n"${text}"\n\n(Responda usando Z-API conforme TOOLS.md)`
+          const agentMessage = `📱 Mensagem recebida via WhatsApp de +${fromPhone}:\n"${text}"`
 
           req('agent', {
             message: agentMessage,
             agentId: 'main',
-            deliver: false,  // Cora vai responder via Z-API por conta própria
+            deliver: true,
             idempotencyKey: randomUUID()
           })
           return
