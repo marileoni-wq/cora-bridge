@@ -117,18 +117,24 @@ app.post('/webhook/zapi', async (req, reply) => {
 
   const isFromMe  = body.isFromMe === true || body.fromMe === true
   const isGroup   = body.isGroup  === true
-  const fromPhone = (body.phone || '').replace(/\D/g, '')
+  const rawPhone  = (body.phone || '').replace(/\D/g, '')
+  // Normalize: accept with or without country code 55
+  const fromPhone = rawPhone.startsWith('55') ? rawPhone : '55' + rawPhone
   const text      = body.text?.message || body.message || body.body || ''
 
-  app.log.info({ fromPhone, isFromMe, isGroup, text }, 'webhook received')
+  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text }, 'webhook received')
 
-  // Only process inbound messages from Mariana
-  if (isFromMe || isGroup) {
-    return reply.send({ ok: true, skipped: 'outbound or group' })
+  // Skip groups
+  if (isGroup) {
+    return reply.send({ ok: true, skipped: 'group' })
   }
 
+  // Since Mariana's phone IS the Z-API instance, her messages come as fromMe=true
+  // and body.phone = recipient. We process:
+  //   1. fromMe=true  + phone=MARIANA_PHONE  → she messaged herself (self-chat)
+  //   2. fromMe=false + phone=MARIANA_PHONE  → someone messaged her
   if (fromPhone !== MARIANA_PHONE) {
-    return reply.send({ ok: true, skipped: `unknown sender: ${fromPhone}` })
+    return reply.send({ ok: true, skipped: `irrelevant: ${fromPhone}` })
   }
 
   if (!text) {
