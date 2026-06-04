@@ -151,15 +151,12 @@ app.post('/webhook/zapi', async (req, reply) => {
   const rawPhone  = (body.phone || '').replace(/\D/g, '')
   const fromPhone = rawPhone.startsWith('55') ? rawPhone : '55' + rawPhone
   const text      = body.text?.message || body.message || body.body || ''
-  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text }, 'webhook received')
+  const webhookType = body.type || ''
+  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text, webhookType }, 'webhook received')
 
-  // Ignore echo: messages sent by this bridge coming back as webhook
-  if (text) {
-    const idx = recentSentTexts.indexOf(text)
-    if (idx !== -1) {
-      recentSentTexts.splice(idx, 1)
-      return reply.send({ ok: true, skipped: 'echo' })
-    }
+  // Skip echoes: Z-API fires SentCallback for messages WE send via API
+  if (webhookType === 'SentCallback' || webhookType === 'DeliveryCallback') {
+    return reply.send({ ok: true, skipped: 'sent-echo' })
   }
 
   if (isGroup) return reply.send({ ok: true, skipped: 'group' })
