@@ -4,6 +4,9 @@ const { randomUUID } = require('crypto')
 
 const app = Fastify({ logger: true })
 
+// IDs de mensagens enviadas pelo bridge — ignorar quando voltam como webhook
+const sentMessageIds = new Set()
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const OPENCLAW_HOST     = process.env.OPENCLAW_HOST     || '143.95.215.63'
@@ -27,7 +30,11 @@ async function sendViaZAPI(phone, message) {
     },
     body: JSON.stringify({ phone, message })
   })
-  return res.json()
+  const data = await res.json()
+  // Track messageId so we ignore the echo webhook
+  if (data.messageId) sentMessageIds.add(data.messageId)
+  if (data.id)        sentMessageIds.add(data.id)
+  return data
 }
 
 // ─── OpenClaw injection ────────────────────────────────────────────────────────
@@ -143,8 +150,15 @@ app.post('/webhook/zapi', async (req, reply) => {
   const rawPhone  = (body.phone || '').replace(/\D/g, '')
   const fromPhone = rawPhone.startsWith('55') ? rawPhone : '55' + rawPhone
   const text      = body.text?.message || body.message || body.body || ''
+  const msgId     = body.messageId || body.id || ''
 
-  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text }, 'webhook received')
+  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text, msgId }, 'webhook received')
+
+  // Ignore echo: messages sent by this bridge coming back as webhook
+  if (msgId && sentMessageIds.has(msgId)) {
+    sentMessageIds.delete(msgId)
+    return reply.send({ ok: true, skipped: 'echo' })
+  }
 
   if (isGroup) return reply.send({ ok: true, skipped: 'group' })
 
