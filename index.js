@@ -4,8 +4,8 @@ const { randomUUID } = require('crypto')
 
 const app = Fastify({ logger: true })
 
-// IDs de mensagens enviadas pelo bridge — ignorar quando voltam como webhook
-const sentMessageIds = new Set()
+// Textos recentemente enviados pelo bridge — ignorar ecos
+const recentSentTexts = []
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,10 @@ const WEBHOOK_SECRET    = process.env.WEBHOOK_SECRET    || ''
 // ─── Z-API send ───────────────────────────────────────────────────────────────
 
 async function sendViaZAPI(phone, message) {
+  // Register text BEFORE sending so the echo webhook is ignored
+  recentSentTexts.unshift(message)
+  if (recentSentTexts.length > 20) recentSentTexts.pop()
+
   const url = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`
   const res = await fetch(url, {
     method: 'POST',
@@ -30,11 +34,7 @@ async function sendViaZAPI(phone, message) {
     },
     body: JSON.stringify({ phone, message })
   })
-  const data = await res.json()
-  // Track messageId so we ignore the echo webhook
-  if (data.messageId) sentMessageIds.add(data.messageId)
-  if (data.id)        sentMessageIds.add(data.id)
-  return data
+  return res.json()
 }
 
 // ─── OpenClaw injection ────────────────────────────────────────────────────────
@@ -150,14 +150,15 @@ app.post('/webhook/zapi', async (req, reply) => {
   const rawPhone  = (body.phone || '').replace(/\D/g, '')
   const fromPhone = rawPhone.startsWith('55') ? rawPhone : '55' + rawPhone
   const text      = body.text?.message || body.message || body.body || ''
-  const msgId     = body.messageId || body.id || ''
-
-  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text, msgId }, 'webhook received')
+  app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text }, 'webhook received')
 
   // Ignore echo: messages sent by this bridge coming back as webhook
-  if (msgId && sentMessageIds.has(msgId)) {
-    sentMessageIds.delete(msgId)
-    return reply.send({ ok: true, skipped: 'echo' })
+  if (text) {
+    const idx = recentSentTexts.indexOf(text)
+    if (idx !== -1) {
+      recentSentTexts.splice(idx, 1)
+      return reply.send({ ok: true, skipped: 'echo' })
+    }
   }
 
   if (isGroup) return reply.send({ ok: true, skipped: 'group' })
