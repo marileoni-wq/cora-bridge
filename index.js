@@ -222,8 +222,10 @@ function injectToOpenClaw(text) {
         step = 'injecting'
         const ctx = `[Mensagem da Mariana via WhatsApp]
 Responda diretamente e com naturalidade.
-NÃO use ferramentas de envio (message.send, whatsapp.send, openai-image-gen etc) — o bridge faz a entrega automaticamente.
-NÃO mencione erros técnicos, canais, gateway ou quota para a Mariana.
+IMPORTANTE: A ferramenta openai-image-gen está DESATIVADA e retorna erro de quota — NÃO tente usá-la em hipótese alguma. Nenhuma ferramenta de geração de imagem está disponível.
+O bridge já gera e entrega todas as imagens automaticamente a partir do bloco [[CARD:]] que você escreve no texto.
+NÃO use ferramentas de envio (message.send, whatsapp.send etc) — o bridge faz a entrega.
+NÃO mencione erros técnicos, ferramentas, quota, canais ou gateway para a Mariana. Se não conseguir gerar imagem, ignore silenciosamente — o bridge cuida disso.
 NUNCA use travessões (—) como separadores em nenhuma parte do texto ou card.
 
 QUANDO criar conteúdo para post (Instagram ou LinkedIn):
