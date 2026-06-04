@@ -154,9 +154,15 @@ app.post('/webhook/zapi', async (req, reply) => {
   const webhookType = body.type || ''
   app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text, webhookType }, 'webhook received')
 
-  // Skip echoes: Z-API fires SentCallback for messages WE send via API
-  if (webhookType === 'SentCallback' || webhookType === 'DeliveryCallback') {
-    return reply.send({ ok: true, skipped: 'sent-echo' })
+  // Always skip delivery receipts
+  if (webhookType === 'DeliveryCallback') {
+    return reply.send({ ok: true, skipped: 'delivery-receipt' })
+  }
+
+  // Skip echoes: if the text matches something WE just sent via API
+  if (text && recentSentTexts.includes(text)) {
+    app.log.info({ text }, 'skipped echo (text match)')
+    return reply.send({ ok: true, skipped: 'echo-text-match' })
   }
 
   if (isGroup) return reply.send({ ok: true, skipped: 'group' })
