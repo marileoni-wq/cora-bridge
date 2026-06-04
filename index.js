@@ -146,6 +146,9 @@ app.post('/webhook/zapi', async (req, reply) => {
     return reply.status(401).send({ error: 'unauthorized' })
   }
 
+  // Log raw body first so we can debug Z-API payload format
+  app.log.info({ rawBody: JSON.stringify(body) }, 'webhook raw')
+
   const isFromMe  = body.isFromMe === true || body.fromMe === true
   const isGroup   = body.isGroup  === true
   const rawPhone  = (body.phone || '').replace(/\D/g, '')
