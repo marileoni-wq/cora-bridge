@@ -13,7 +13,7 @@ app = FastAPI()
 # ─── Config ───────────────────────────────────────────────────────────────────
 
 GEMINI_KEY        = os.environ['GEMINI_API_KEY']
-GEMINI_MODEL      = os.getenv('GEMINI_MODEL',    'gemini-2.0-flash')
+GEMINI_MODEL      = os.getenv('GEMINI_MODEL',    'gemini-1.5-flash')
 MARIANA_PHONE     = os.environ['MARIANA_PHONE']
 ZAPI_INSTANCE     = os.environ['ZAPI_INSTANCE']
 ZAPI_TOKEN        = os.environ['ZAPI_TOKEN']
