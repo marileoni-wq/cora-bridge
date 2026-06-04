@@ -97,8 +97,9 @@ function injectToOpenClaw(fromPhone, text) {
       // Step 2: authenticated → inject
       if (step === 'connecting') {
         step = 'injecting'
+        const ctx = `[Mensagem da Mariana via WhatsApp — responda diretamente e com naturalidade, sem mencionar status de canais, gateway ou questões técnicas]\n\n${text}`
         req('agent', {
-          message: text,
+          message: ctx,
           agentId: 'main',
           deliver: false,
           idempotencyKey: randomUUID()
