@@ -157,27 +157,28 @@ app.post('/webhook/zapi', async (req, reply) => {
   const webhookType = body.type || ''
   app.log.info({ rawPhone, fromPhone, isFromMe, isGroup, text, webhookType }, 'webhook received')
 
-  // Always skip delivery receipts
+  // Skip delivery receipts (no text anyway)
   if (webhookType === 'DeliveryCallback') {
     return reply.send({ ok: true, skipped: 'delivery-receipt' })
   }
 
-  // Skip echoes: if the text matches something WE just sent via API
-  if (text && recentSentTexts.includes(text)) {
-    app.log.info({ text }, 'skipped echo (text match)')
-    return reply.send({ ok: true, skipped: 'echo-text-match' })
+  // Skip echoes: Z-API marks messages sent via API with fromApi: true
+  if (body.fromApi === true) {
+    return reply.send({ ok: true, skipped: 'api-echo' })
   }
 
   if (isGroup) return reply.send({ ok: true, skipped: 'group' })
 
-  if (fromPhone !== MARIANA_PHONE) {
-    return reply.send({ ok: true, skipped: `irrelevant: ${fromPhone}` })
+  // Only process messages sent BY Mariana from her phone (not messages she receives)
+  if (!isFromMe) {
+    return reply.send({ ok: true, skipped: `not-from-me: ${fromPhone}` })
   }
 
   if (!text) return reply.send({ ok: true, skipped: 'no text' })
 
   try {
-    const result = await injectToOpenClaw(fromPhone, text)
+    // Always reply to Mariana's real number (phone field may be LID format)
+    const result = await injectToOpenClaw(MARIANA_PHONE, text)
     app.log.info({ result }, 'done')
     return reply.send({ ok: true, result })
   } catch (err) {
