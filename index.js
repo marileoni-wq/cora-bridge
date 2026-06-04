@@ -2,8 +2,11 @@ const Fastify = require('fastify')
 const { WebSocket } = require('ws')
 const { randomUUID } = require('crypto')
 const { Resvg } = require('@resvg/resvg-js')
+const path = require('path')
 
 const app = Fastify({ logger: true })
+
+const FONT_DIR = path.join(__dirname, 'fonts')
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -47,60 +50,84 @@ function esc(s) {
 }
 
 function buildCardSVG(headline, subtext) {
-  const W = 1080, H = 1080
+  const W = 1080, H = 1080, PAD = 72
 
-  const headLines = splitLines(headline.toUpperCase(), 16)
-  const headFS    = headLines.length === 1 ? 100 : headLines.length === 2 ? 86 : 72
-  const headLH    = headFS * 1.18
-  const headH     = headLines.length * headLH
+  const headLines = splitLines(headline, 22)
+  const headFS    = headLines.length <= 2 ? 82 : 68
+  const headLH    = headFS * 1.22
+  const headY     = 240
 
-  const subLines = subtext ? splitLines(subtext, 38) : []
-  const subFS    = 36
-  const subLH    = subFS * 1.55
-  const subH     = subLines.length * subLH
-
-  const gap      = subLines.length ? 56 : 0
-  const totalH   = headH + gap + subH
-  const startY   = (H - totalH) / 2
+  const bodyLines = subtext ? splitLines(subtext, 42) : []
+  const bodyFS    = 34
+  const bodyLH    = bodyFS * 1.65
+  const bodyY     = headY + headLines.length * headLH + 52
 
   const headSVG = headLines.map((l, i) =>
-    `<text x="540" y="${startY + (i + 0.82) * headLH}"
-      font-family="'Arial Black',Arial,Impact,sans-serif"
-      font-size="${headFS}" font-weight="900"
-      fill="#E8A000" text-anchor="middle" letter-spacing="2">${esc(l)}</text>`
+    `<text x="${PAD}" y="${headY + i * headLH}"
+      font-family="Inter" font-size="${headFS}" font-weight="700"
+      fill="#FFFFFF" letter-spacing="-0.5">${esc(l)}</text>`
   ).join('\n  ')
 
-  const subY   = startY + headH + gap
-  const subSVG = subLines.map((l, i) =>
-    `<text x="540" y="${subY + (i + 0.82) * subLH}"
-      font-family="Arial,sans-serif"
-      font-size="${subFS}" font-weight="400"
-      fill="#C8C8C8" text-anchor="middle" letter-spacing="0.5">${esc(l)}</text>`
+  const bodySVG = bodyLines.map((l, i) =>
+    `<text x="${PAD}" y="${bodyY + i * bodyLH}"
+      font-family="Inter" font-size="${bodyFS}" font-weight="400"
+      fill="#8899AA" letter-spacing="0">${esc(l)}</text>`
   ).join('\n  ')
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <defs>
-    <pattern id="g" width="54" height="54" patternUnits="userSpaceOnUse">
-      <path d="M 54 0 L 0 0 0 54" fill="none" stroke="#fff" stroke-width="0.4" opacity="0.06"/>
+    <pattern id="grid" width="54" height="54" patternUnits="userSpaceOnUse">
+      <path d="M 54 0 L 0 0 0 54" fill="none" stroke="#FFFFFF" stroke-width="0.5" opacity="0.12"/>
     </pattern>
   </defs>
-  <rect width="${W}" height="${H}" fill="#0B1929"/>
-  <rect width="${W}" height="${H}" fill="url(#g)"/>
-  <rect x="60" y="68" width="56" height="4" fill="#E8A000"/>
-  <rect x="60" y="${H - 72}" width="56" height="4" fill="#E8A000"/>
-  <text x="60" y="${H - 34}"
-    font-family="Arial,sans-serif" font-size="18" font-weight="700"
-    fill="#E8A000" opacity="0.55" letter-spacing="5">FIRM COLLECTIVE</text>
+  <rect width="${W}" height="${H}" fill="#0C1828"/>
+  <rect width="${W}" height="${H}" fill="url(#grid)"/>
+
+  <!-- Corner marks -->
+  <text x="46" y="60" font-family="Inter" font-size="18" font-weight="400" fill="#FFFFFF" opacity="0.35">+</text>
+  <text x="${W - 58}" y="60" font-family="Inter" font-size="18" font-weight="400" fill="#FFFFFF" opacity="0.35">+</text>
+  <text x="46" y="${H - 34}" font-family="Inter" font-size="18" font-weight="400" fill="#FFFFFF" opacity="0.35">+</text>
+  <text x="${W - 58}" y="${H - 34}" font-family="Inter" font-size="18" font-weight="400" fill="#FFFFFF" opacity="0.35">+</text>
+
+  <!-- Top meta -->
+  <text x="${PAD}" y="96"
+    font-family="Inter" font-size="13" font-weight="400"
+    fill="#FFFFFF" opacity="0.45" letter-spacing="2">• FRM · 001</text>
+  <text x="${W - PAD}" y="96" text-anchor="end"
+    font-family="Inter" font-size="12" font-weight="400"
+    fill="#FFFFFF" opacity="0.35" letter-spacing="2">INSTAGRAM · POST</text>
+
+  <!-- Headline -->
   ${headSVG}
-  ${subLines.length ? `
-  <rect x="440" y="${subY - 20}" width="200" height="1" fill="#E8A000" opacity="0.28"/>
-  ${subSVG}` : ''}
+
+  <!-- Body (no divider) -->
+  ${bodySVG}
+
+  <!-- Footer -->
+  <text x="${PAD}" y="${H - 48}"
+    font-family="Inter" font-size="22" font-weight="700"
+    fill="#FFFFFF" opacity="0.9">Firm</text>
+  <text x="${PAD + 62}" y="${H - 48}"
+    font-family="Inter" font-size="22" font-weight="400"
+    fill="#FFFFFF" opacity="0.9">Collective</text>
+  <text x="${W - PAD}" y="${H - 48}" text-anchor="end"
+    font-family="Inter" font-size="12" font-weight="400"
+    fill="#FFFFFF" opacity="0.4" letter-spacing="3">@FIRMCOLLECTIVE</text>
 </svg>`
 }
 
 function generateCardPng(headline, subtext) {
-  const svg   = buildCardSVG(headline, subtext)
-  const resvg = new Resvg(svg, { fitTo: { mode: 'original' } })
+  const svg = buildCardSVG(headline, subtext)
+  const resvg = new Resvg(svg, {
+    font: {
+      fontFiles: [
+        path.join(FONT_DIR, 'Inter-Bold.ttf'),
+        path.join(FONT_DIR, 'Inter-Regular.ttf')
+      ],
+      loadSystemFonts: false,
+      defaultFontFamily: 'Inter'
+    }
+  })
   return resvg.render().asPng()
 }
 
@@ -197,6 +224,7 @@ function injectToOpenClaw(text) {
 Responda diretamente e com naturalidade.
 NÃO use ferramentas de envio (message.send, whatsapp.send, openai-image-gen etc) — o bridge faz a entrega automaticamente.
 NÃO mencione erros técnicos, canais, gateway ou quota para a Mariana.
+NUNCA use travessões (—) como separadores em nenhuma parte do texto ou card.
 
 QUANDO criar conteúdo para post (Instagram ou LinkedIn):
 - Escreva o texto completo do post normalmente
