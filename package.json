@@ -8,6 +8,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "fastify": "^4.28.0",
     "ws": "^8.18.0"
   },
